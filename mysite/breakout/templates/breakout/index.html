@@ -1,0 +1,212 @@
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Break out Game</title>
+    <style>
+    	* { padding: 0; margin: 0; }
+    	canvas { background: #eee; display: block; margin: 0 auto; }
+    </style>
+</head>
+<body>
+<canvas id="myCanvas" width="480" height="320"></canvas>
+<script>
+    class Ball{
+        constructor(tmpx, tmpy){
+            this.x = tmpx;
+            this.y = tmpy;
+            this.speedX = 2;
+            this.speedY = -2;
+            this.Radius = 10;
+        }
+        draw(){//วาดบอล
+            document.getElementById("myCanvas").getContext("2d").beginPath();
+            document.getElementById("myCanvas").getContext("2d").arc(this.x, this.y, this.Radius, 0, Math.PI*2);
+            document.getElementById("myCanvas").getContext("2d").fillStyle = "#0095DD";
+            document.getElementById("myCanvas").getContext("2d").fill();
+            document.getElementById("myCanvas").getContext("2d").closePath();
+            
+        }
+        move(){//สั่งบอลเคลื่อนที่
+            this.x += this.speedX;
+            this.y += this.speedY;
+        }
+        bounceX(){//บอลกระเด้งซ้าย-ขวา
+            this.speedX = -this.speedX;
+        }
+        bounceY(){//บอลกระเด้งบน-ล่าง
+            this.speedY =-this.speedY;
+        }
+    }
+    class Brick{
+        constructor(){
+            this.x =0;
+            this.y =0;
+            this.offsetY =30;
+            this.offsetX =30;
+            this.width =75;
+            this.height =20;
+            this.brickPadding = 10;
+            this.status =1;
+        }
+        draw(){//วาดกำแพง
+            document.getElementById("myCanvas").getContext("2d").beginPath();
+            document.getElementById("myCanvas").getContext("2d").rect(this.x, this.y, this.width, this.height);
+            document.getElementById("myCanvas").getContext("2d").fillStyle = "#0095DD";
+            document.getElementById("myCanvas").getContext("2d").fill();
+            document.getElementById("myCanvas").getContext("2d").closePath();
+        }
+    }
+    class Paddle{
+        constructor(){
+            this.canvas = document.getElementById("myCanvas");
+            this.ctx = this.canvas.getContext("2d");
+            this.width = this.canvas.width;
+            this.height = this.canvas.height;
+            this.paddleHeight = 10;
+            this.paddleWidth = 75;
+            this.paddleX = (this.width-this.paddleWidth)/2;
+            this.speedX = 7;
+        }
+        draw(){//วาดกำแพง
+            this.ctx.beginPath()
+            this.ctx.rect(this.paddleX,this.height-this.paddleHeight,this.paddleWidth,this.paddleHeight)
+            this.ctx.fillStyle = "#0095DD";
+            this.ctx.fill();
+            this.ctx.closePath();
+        }
+        moveLeft(){//เคลื่อนที่ไปทางซ้าย
+            this.paddleX -= this.speedX;
+        }
+        moveRight(){//เคลื่อนที่ไปทางขวา
+            this.paddleX += this.speedX;
+        }
+    }
+    class InputProcessor{
+        constructor(){
+            this.relativeX = 0;
+            this.canvas = document.getElementById("myCanvas");
+            var _this = this;
+            //จัดการกับ Input
+            document.addEventListener("keydown", this.pushDown, false);//กดปุ่ม
+            document.onmousemove = function(event){_this.mouseMoveHandler(event)}//ขยับเมาส์
+            
+        }
+        pushDown(e){//กดซ้ายไปซ้าย-กดขวาไปขวา
+            if(e.key == "Right" || e.key == "ArrowRight"){
+                w.paddle.moveRight();
+            }
+            else if(e.key == "Left" || e.key == "ArrowLeft"){
+                w.paddle.moveLeft();
+            }
+        }
+        mouseMoveHandler(e){//ขยับ Paddle ไปตามเมาส์ที่เคลื่อน
+            this.relativeX = e.clientX - this.canvas.offsetLeft;
+            if(this.relativeX > 0 && this.relativeX < this.canvas.width) {//ถ้าเมาส์อยู่ใน Canvas
+                w.paddle.paddleX = this.relativeX - w.paddle.paddleWidth/2;
+            }
+        }
+    }
+    class World{
+        constructor(r,c){
+            this.canvas = document.getElementById("myCanvas");
+            this.ctx = this.canvas.getContext("2d");
+            this.ball = new Ball(this.canvas.width/2,this.canvas.height/2);//สร้างลูกบอล
+            this.paddle = new Paddle();//สร้าง Paddle
+            this.brick = [];
+            this.row = r;
+            this.column = c;
+            this.inputProcessor = new InputProcessor();//สร้างตัวควบคุม Paddle
+            this.live = 3;
+            this.score = 0; 
+            var _this = this;
+            this.interval = setInterval(function () { _this.update(); },10); //ตั้งเวลาโลกอัพเดต  
+
+            for(var c =0; c<this.column;c++){//สร้าง brick ตามแถวและคอลัมน์
+                this.brick[c] = [];
+                for(var r=0; r<this.row;r++){
+                    this.brick[c][r] = new Brick();
+                }
+            }
+        }
+        drawBricks(){//วาด brick ลง canvas
+            for(var c =0; c<this.column;c++){
+                for(var r=0; r<this.row;r++){
+                    if(this.brick[c][r].status == 1) {
+                        this.brick[c][r].x = (c*(this.brick[c][r].width+this.brick[c][r].brickPadding))+this.brick[c][r].offsetX;
+                        this.brick[c][r].y = (r*(this.brick[c][r].height+this.brick[c][r].brickPadding)) + this.brick[c][r].offsetY;
+                        this.brick[c][r].draw();
+                    }
+                }
+            }
+        }
+        drawLives(){
+            this.ctx.font = "16px Arial";
+            this.ctx.fillStyle = "#0095DD";
+            this.ctx.fillText("Lives: "+this.live, this.canvas.width-65, 20);
+        }
+        drawScore(){
+            this.ctx.font = "16px Arial";
+            this.ctx.fillStyle = "#0095DD";
+            this.ctx.fillText("Score: "+this.score, 8, 20);
+        }
+        update(){//อัพเดตโลก
+            this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+            this.ball.draw();
+            this.ball.move();
+            this.paddle.draw();
+            this.drawBricks();
+            this.collisionDetection();
+            this.drawScore();
+            this.drawLives();
+
+            if(this.ball.x + this.ball.speedX > this.canvas.width-this.ball.Radius || this.ball.x + this.ball.speedX  < this.ball.Radius) {//ตรวจสอบการชนระหว่างลูกบอลกับกำแพงขอบข้าง
+                this.ball.bounceX();
+            }
+            if(this.ball.y + this.ball.speedY < this.ball.Radius) {//ตรวจสอบการชนระหว่างลูกบอลกับกำแพงขอบบน
+                this.ball.bounceY();
+            }else if(this.ball.y + this.ball.speedY > this.canvas.height-this.ball.Radius){//ถ้าลูกบอลถูกรับโดย Paddle
+                if( this.ball.x > this.paddle.paddleX && this.ball.x < this.paddle.paddleX + this.paddle.paddleWidth){
+                    this.ball.bounceY();
+                }else{//ถ้ารับลูกบอลไม่ได้
+                    this.live --;//พลังชีวิตหาย
+                    if(this.live === 0){//ถ้าพลังชีวิตหมด
+                        alert("GAME OVER");
+                        document.location.reload();
+                        clearInterval(this.interval); // Needed for Chrome to end game
+                    }else{//นำพลังชีวิตมาสร้างโลกใหม่
+                        this.ball.x = this.canvas.width/2;
+                        this.ball.y = this.canvas.height/2;
+                        this.ball.speedX = 2;
+                        this.ball.speedY = -2;
+                        this.paddle.paddleX = (this.canvas.width-this.paddle.paddleWidth)/2;
+                    }
+                    
+                }
+
+            }
+        }
+        collisionDetection(){//ตรวจสอบว่าลูกบอลชนกับกำแพง
+            for(var c=0; c<this.column; c++) {
+                for(var r=0; r<this.row; r++) {
+                    this.brickBlock = this.brick[c][r];
+                    if(this.brickBlock.status == 1) {//ถ้ากำแพงยังไม่ถูกทำลาย
+                        if(this.ball.x > this.brickBlock.x && this.ball.x < this.brickBlock.x+this.brickBlock.width && this.ball.y > this.brickBlock.y && this.ball.y < this.brickBlock.y+this.brickBlock.height) {
+                            //ถ้ากำแพงถูกชน
+                            this.ball.speedY = -this.ball.speedY;
+                            this.brickBlock.status = 0;//กำแพงหายไป
+                            this.score ++;//คะแนนเพิ่ม
+                            if(this.score == this.row*this.column) {//ถ้ากำแพงถูกทำลายทั้งหมด
+                                alert("YOU WIN, CONGRATULATIONS!");
+                                document.location.reload();
+                                clearInterval(this.interval); // Needed for Chrome to end game
+                    }
+                        }
+                    }
+                }
+            }
+        }
+    }
+var w = new World(3,5);//สร้างโลก
+</script>
+</body>
+</html> 
